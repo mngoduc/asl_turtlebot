@@ -5,7 +5,13 @@
     <!-- PU NAME OF YOUR PI HERE -->
     <machine name="pi" address="<name of pi>.local" env-loader="~/catkin_ws/devel/env_pi.sh" user="aa274" password="aa274" />
 
-
+    <!-- FILL ROSPARAMS HERE -->
+    <rosparam param="sim">false</rosparam>
+    <rosparam param="map">true</rosparam>
+    <!-- tf here means tensorflow for object detection -->
+    <rosparam param="use_tf">true</rosparam>
+    <rosparam param="rviz">true</rosparam>
+    <!-- YOUR CODE ENDS HERE -->
 
     <node machine="pi" type="raspicam_node" pkg="raspicam_node" name="raspicam_node" output="screen">
 
