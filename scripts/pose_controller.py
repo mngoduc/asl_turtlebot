@@ -10,9 +10,9 @@ from numpy import linalg
 from utils import wrapToPi
 
 # control gains
-K1 = 0.4
-K2 = 0.8
-K3 = 0.8
+K1 = 0.5
+K2 = 0.2
+K3 = 0.1
 
 # tells the robot to stay still
 # if it doesn't get messages within that time period
