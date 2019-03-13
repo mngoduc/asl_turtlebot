@@ -155,7 +155,6 @@ class PoseController:
             cmd_x_dot = 0
             cmd_theta_dot = 0
 
-
         cmd = Twist()
         cmd.linear.x = cmd_x_dot
         cmd.angular.z = cmd_theta_dot
