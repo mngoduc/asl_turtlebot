@@ -50,6 +50,7 @@ space key, k : force stop
 anything else : stop smoothly
 
 CTRL-C to quit
+Esteban was here
 """
 
 moveBindings = {
