@@ -54,6 +54,15 @@ class Supervisor:
         self.x = 0
         self.y = 0
         self.theta = 0
+		
+		# change these to adjust delivery destination
+		self.delivery_location = [2, 2, 0]
+		
+		self.total_items = 0
+		self.items_gathered = 0
+		self.shopping_list = []
+		
+		# start off in WAITING
         self.mode = Mode.WAITING
         self.last_mode_printed = None
         self.trans_listener = tf.TransformListener()
@@ -76,25 +85,31 @@ class Supervisor:
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)
         # subscriber for image detection
         rospy.Subscriber('/detector/objects', DetectedObjectList, self.detector_callback)
+		# subscriber for shopping list 
+		rospy.Subscriber('/delivery_request', String, self.delivery_callback)
 
     def rviz_goal_callback(self, msg):
         """ callback for a pose goal sent through rviz """
         origin_frame = "/map" if mapping else "/odom"
         print("rviz command received!")
 
-        try:
-            nav_pose_origin = self.trans_listener.transformPose(origin_frame, msg)
-            self.x_g = nav_pose_origin.pose.position.x
-            self.y_g = nav_pose_origin.pose.position.y
-            quaternion = (
-                    nav_pose_origin.pose.orientation.x,
-                    nav_pose_origin.pose.orientation.y,
-                    nav_pose_origin.pose.orientation.z,
-                    nav_pose_origin.pose.orientation.w)
-            euler = tf.transformations.euler_from_quaternion(quaternion)
-            self.theta_g = euler[2]
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            pass
+		# REMOVE THIS IF TO HAVE RVIZ CONTROL AT ALL TIMES
+		if self.mode == Mode.WAITING or self.mode == Mode.EXPLORING
+			try:
+				nav_pose_origin = self.trans_listener.transformPose(origin_frame, msg)
+				self.x_g = nav_pose_origin.pose.position.x
+				self.y_g = nav_pose_origin.pose.position.y
+				quaternion = (
+						nav_pose_origin.pose.orientation.x,
+						nav_pose_origin.pose.orientation.y,
+						nav_pose_origin.pose.orientation.z,
+						nav_pose_origin.pose.orientation.w)
+				euler = tf.transformations.euler_from_quaternion(quaternion)
+				self.theta_g = euler[2]
+			except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+				pass
+			
+		# if rviz goal published, change to EXPLORING state
         self.mode = Mode.EXPLORING
 
     # Sets robot move commands
@@ -106,39 +121,66 @@ class Supervisor:
 
     #detector callback
     def detector_callback(self, msg):
-        objects_str = msg.objects
-        #rospy.loginfo(objects_str)
-        if "banana" in objects_str:
-            obj = msg.ob_msgs[msg.objects.index("banana")]
-            self.found_objects["banana"] = [self.x, self.y, self.theta]
-            dist = obj.distance
-            rospy.loginfo("FOUND BANANANANANANA")
-            self.add_marker("banana")
-            #rospy.loginfo(obj.distance)
-        if "broccoli" in objects_str:
-            obj = msg.ob_msgs[msg.objects.index("broccoli")]
-            self.found_objects["broccoli"] = [self.x, self.y, self.theta]
-            dist = obj.distance
-            rospy.loginfo("FOUND BROCCOLILILI")
-            self.add_marker("broccoli")
-            #rospy.loginfo(obj.distance)
-        if "hot_dog" in objects_str:
-            obj = msg.ob_msgs[msg.objects.index("hot_dog")]
-            self.found_objects["hot_dog"] = [self.x, self.y, self.theta]
-            dist = obj.distance
-            rospy.loginfo("HOT DIGGITY DOG")
-            self.add_marker("hot_dog")
-            #rospy.loginfo(obj.distance)
-        if "bottle" in objects_str:
-            obj = msg.ob_msgs[msg.objects.index("bottle")]
-            self.found_objects["bottle"] = [self.x, self.y, self.theta]
-            dist = obj.distance
-            self.add_marker("bottle")
-            rospy.loginfo("ROBOTS DRUNK")
-            #rospy.loginfo(obj.distance)
-        #rospy.loginfo(self.found_objects)
-        #rospy.loginfo(msg.objects)
-        #rospy.loginfo(msg.ob_msgs[0].distance)
+		if self.mode == Mode.EXPLORING:
+			objects_str = msg.objects
+			#rospy.loginfo(objects_str)
+			if "banana" in objects_str:
+				obj = msg.ob_msgs[msg.objects.index("banana")]
+				self.found_objects["banana"] = [self.x, self.y, self.theta]
+				dist = obj.distance
+				rospy.loginfo("FOUND BANANANANANANA")
+				self.add_marker("banana")
+				#rospy.loginfo(obj.distance)
+			if "broccoli" in objects_str:
+				obj = msg.ob_msgs[msg.objects.index("broccoli")]
+				self.found_objects["broccoli"] = [self.x, self.y, self.theta]
+				dist = obj.distance
+				rospy.loginfo("FOUND BROCCOLILILI")
+				self.add_marker("broccoli")
+				#rospy.loginfo(obj.distance)
+			if "hot_dog" in objects_str:
+				obj = msg.ob_msgs[msg.objects.index("hot_dog")]
+				self.found_objects["hot_dog"] = [self.x, self.y, self.theta]
+				dist = obj.distance
+				rospy.loginfo("HOT DIGGITY DOG")
+				self.add_marker("hot_dog")
+				#rospy.loginfo(obj.distance)
+			if "bottle" in objects_str:
+				obj = msg.ob_msgs[msg.objects.index("bottle")]
+				self.found_objects["bottle"] = [self.x, self.y, self.theta]
+				dist = obj.distance
+				self.add_marker("bottle")
+				rospy.loginfo("ROBOTS DRUNK")
+				#rospy.loginfo(obj.distance)
+			rospy.loginfo(self.found_objects)
+			#rospy.loginfo(msg.objects)
+			#rospy.loginfo(msg.ob_msgs[0].distance)
+		
+	#delivery callback
+	def delivery_callback(self, msg):
+	
+		# only respond if we have finished exploring
+		if self.mode == Mode.WAITING:
+			self.shopping_list = msg.split(',')
+			self.total_items = len(shopping_list)
+			item_location = self.shopping_list[0]
+			
+			# move robot towards first item
+			self.go_to(item_location)
+			self.mode = Mode.GATHERING	
+	
+	#######################################################
+	# is this the correct code to move a robot to a dest?
+	######################################################
+	def go_to(self, msg):
+		pose_g_msg = Pose2D()
+		pose_g_msg.x = msg[0]
+        pose_g_msg.y = msg[1]
+        pose_g_msg.theta = msg[2]
+
+        self.pose_goal_publisher.publish(pose_g_msg)
+		
+		
 
     def state_exploring(self):
         """ sends the current desired pose to the pose controller """
@@ -191,6 +233,7 @@ class Supervisor:
         return (abs(x-self.x)<POS_EPS and abs(y-self.y)<POS_EPS \
             and abs(theta-self.theta)<THETA_EPS)
 
+	
     def loop(self):
         """ the main loop of the robot. At each iteration, depending on its
         mode (i.e. the finite state machine's state), if takes appropriate
@@ -210,28 +253,51 @@ class Supervisor:
         if not(self.last_mode_printed == self.mode):
             rospy.loginfo("Current Mode: %s", self.mode)
             self.last_mode_printed = self.mode
-
+		###################################STATE MACHINE###############################
+		###############################################################################
         # checks wich mode it is in and acts accordingly
         if self.mode == Mode.WAITING:
             # send zero velocity
             self.state_waiting()
 
+		# automatically in EXPLORING state if rviz goal published
         elif self.mode == Mode.EXPLORING:
             # moving towards a desired pose through Rviz - exploring phase
             if self.close_to(self.x_g,self.y_g,self.theta_g):
                 self.mode = Mode.WAITING
             else:
                 self.state_exploring()
+		
+		# automatically kicked into NAV if goal pose received
+		elif self.mode == Mode.NAV:
+			if self.close_to(self.x_g,self.y_g,self.theta_g):
+				self.mode = Mode.WAITING
             #
-        #elif self.mode == Mode.GATHERING:
-            # Something
+        elif self.mode == Mode.GATHERING:
+			# if robot has reached item
+			if self.close_to(self.x_g,self.y_g,self.theta_g):
+				self.items_gathered = self.items_gathered + 1
+				
+				# move robot towards delivery location
+				self.go_to(self.delivery_location)
+				self.mode = Mode.DELIVERING
 
-        #elif self.mode == Mode.DELIVERING:
-            # Something
+        elif self.mode == Mode.DELIVERING:
+			if self.close_to(self.x_g,self.y_g,self.theta_g):
+				# if there are still items remaining to deliver
+				if self.items_gathered < self.total_items:
+					# go get the next item
+					self.go_to(self.shopping_list[self.items_gathered])
+					self.mode = Mode.GATHERING
+				else:
+					self.mode = Mode.WAITING
+			
+					
 
         else:
             raise Exception('This mode is not supported: %s'
                 % str(self.mode))
+	###############################################################################
 
     def run(self):
         rate = rospy.Rate(10) # 10 Hz
