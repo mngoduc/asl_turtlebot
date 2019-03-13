@@ -260,11 +260,15 @@ class AStar(object):
         if x==self.x_init or x==self.x_goal:
             return True
         for dim in range(len(x)):
+            rospy.loginfo("x[dim]")
+            rospy.loginfo(x[dim])
             if x[dim] < self.statespace_lo[dim]:
+                rospy.loginfo("too small xdim")
                 return False
             if x[dim] >= self.statespace_hi[dim]:
                 return False
         if not self.occupancy.is_free(x):
+            rospy.loginfo("too many obstacles")
             return False
         return True
 

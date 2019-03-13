@@ -150,6 +150,10 @@ class Navigator:
         # if close to the goal, use the pose_controller instead
         if self.close_to_end_location():
             rospy.loginfo("Navigator: Close to nav goal using pose controller")
+            rospy.loginfo("Nav goal is")
+            rospy.loginfo([self.x_g, self.y_g, self.theta_g])
+            rospy.loginfo("Current position is")
+            rospy.loginfo([self.x, self.y, self.theta])
             pose_g_msg = Pose2D()
             pose_g_msg.x = self.x_g
             pose_g_msg.y = self.y_g
