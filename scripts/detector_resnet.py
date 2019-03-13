@@ -260,7 +260,7 @@ class Detector:
                 object_msg.thetaright = thetaright
                 object_msg.corners = [ymin,xmin,ymax,xmax]
                 self.object_publishers[cl].publish(object_msg)
-
+                print ("name: ", {object_msg.name})
                 # add detected object to detected objects list
                 detected_objects.objects.append(self.object_labels[cl])
                 detected_objects.ob_msgs.append(object_msg)
