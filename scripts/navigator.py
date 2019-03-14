@@ -24,15 +24,17 @@ END_POS_THRESH = .2
 START_POS_THRESH = .2
 
 # thereshold in theta to start moving forward when path following
-THETA_START_THRESH = 0.09
+#THETA_START_THRESH = .09
+THETA_START_THRESH = 0.15
 # P gain on orientation before start
 THETA_START_P = 1.0
 
 # maximum velocity
-V_MAX = .1
+V_MAX = .05
 
 # maximim angular velocity
-W_MAX = .3
+#W_MAX = .075
+W_MAX = 0.15
 
 # desired crusing velocity
 V_DES = 0.12
@@ -239,7 +241,13 @@ class Navigator:
                     cmd_msg.angular.z = Wcmd
                     self.nav_vel_pub.publish(cmd_msg)
                     return
-
+            cmd_x_dot = 0
+            cmd_theta_dot = 0
+            cmd_msg = Twist()
+            cmd_msg.linear.x = cmd_x_dot
+            cmd_msg.angular.z = cmd_theta_dot
+            self.nav_vel_pub.publish(cmd_msg)
+            return
             # compute the "current" time along the path execution
             t = (rospy.get_rostime()-self.current_plan_start_time).to_sec()
             t = max(0.0, t)

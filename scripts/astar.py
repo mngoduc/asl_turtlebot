@@ -371,7 +371,9 @@ class AStar(object):
 
             # find state in OPEN set with lowest f_score
             x_current = self.find_best_f_score()
-            
+            rospy.loginfo("here are the current and goal states")
+            rospy.loginfo(x_current)
+            rospy.loginfo(self.x_goal)
             # if x_current = x_goal, exit
             if x_current == self.x_goal:
                 # update path

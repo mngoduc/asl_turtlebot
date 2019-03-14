@@ -15,8 +15,8 @@ from visualization_msgs.msg import Marker, MarkerArray
 mapping = rospy.get_param("map")
 
 # threshold at which we consider the robot at a location
-POS_EPS = .1
-THETA_EPS = .3
+POS_EPS = .2
+THETA_EPS = .5
 
 # time to stop at a stop sign
 STOP_TIME = 10
@@ -61,6 +61,7 @@ class Supervisor:
         
         self.total_items = 0
         self.items_gathered = 0
+        self.items_found = 0
         self.shopping_list = []
         
         # start off in WAITING
@@ -154,8 +155,8 @@ class Supervisor:
                     obj = msg.ob_msgs[msg.objects.index("bottle")]
                     dist = obj.distance
                     if dist < 0.55: 
-                        self.add_marker("bottle")
                         self.found_objects["bottle"] = [self.x, self.y, self.theta]
+                        self.add_marker("bottle")
                         rospy.loginfo("ROBOTS DRUNK")
                         rospy.loginfo("bottle coordinates")
                         rospy.loginfo([self.x, self.y, self.theta])
@@ -254,12 +255,8 @@ class Supervisor:
         marker.pose.position.x = self.found_objects[object_type][0]
         marker.pose.position.y = self.found_objects[object_type][1]
         marker.pose.position.z = 0 #self.found_objects[object_type][2]
-
-        #renumber ids
-        id = 0
-        for m in self.marker_array.markers:
-            m.id = id
-            id += 1
+        self.items_found += 1
+        marker.id = self.items_found
 
         self.marker_array.markers.append(marker)
         self.marker_publisher.publish(self.marker_array)
@@ -316,10 +313,14 @@ class Supervisor:
             rospy.loginfo([self.x_g, self.y_g, self.theta_g])
             # if robot has reached item
             if self.close_to(self.x_g,self.y_g,self.theta_g):
+
+            	# send zero controls
+            	self.state_waiting()
+
                 self.items_gathered = self.items_gathered + 1
                 
                 # move robot towards delivery location
-                self.go_to(self.delivery_location)self.go_to(self.delivery_location)
+                self.go_to(self.delivery_location)
                 self.mode = Mode.DELIVERING
             else: 
                 rospy.loginfo("Not close enough in gathering state")
@@ -330,6 +331,10 @@ class Supervisor:
             rospy.loginfo("Commanded pose in delivering")
             rospy.loginfo([self.x_g, self.y_g, self.theta_g])
             if self.close_to(self.x_g,self.y_g,self.theta_g):
+
+            	# send zero controls
+            	self.state_waiting()
+
                 # self.mode = Mode.RETRIEVING
 
                 # if there are still items remaining to deliver

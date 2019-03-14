@@ -19,10 +19,15 @@ K3 = 2.0 #0.8
 TIMEOUT = np.inf
 
 # maximum velocity
-V_MAX = 0.1
+V_MAX = 0.05
 
 # maximim angular velocity
-W_MAX = 0.2
+#W_MAX = .075
+W_MAX = 0.15
+
+RHO_MIN = 0.2
+
+TH_ROT_MIN = 0.5
 
 # if sim is True/using gazebo, therefore want to subscribe to /gazebo/model_states\
 # otherwise, they will use a TF lookup (hw2+)
@@ -126,7 +131,7 @@ class PoseController:
             rospy.loginfo(rho)
             rospy.loginfo(th_rot)
 
-            if (rho < 0.03) & (th_rot < 0.08):
+            if (rho < RHO_MIN) & (th_rot < TH_ROT_MIN):
                 rospy.loginfo("Close to goal: commanding zero controls")
                 self.x_g = None
                 self.y_g = None
