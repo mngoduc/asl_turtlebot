@@ -168,13 +168,18 @@ class Supervisor:
     def delivery_callback(self, msg):
     
         # only respond if we have finished exploring
-        if self.mode == Mode.WAITING:
+        if self.mode == Mode.WAITING or self.mode == Mode.EXPLORING:
             rospy.loginfo("message")
             rospy.loginfo(msg.data)
             self.shopping_list = msg.data.split(',')
             self.total_items = len(self.shopping_list)
 
+
+            rospy.loginfo(self.shopping_list)
+            rospy.loginfo(self.shopping_list[0])
+
             item_location = self.found_objects[self.shopping_list[0]]
+            rospy.loginfo(item_location)
 
             rospy.loginfo("item_location")
             rospy.loginfo(item_location)
@@ -195,9 +200,9 @@ class Supervisor:
         rospy.loginfo(self.x_g)
 
         pose_g_msg = Pose2D()
-        pose_g_msg.x = msg[0]
-        pose_g_msg.y = msg[1]
-        pose_g_msg.theta = msg[2]
+        pose_g_msg.x = self.x_g
+        pose_g_msg.y = self.y_g
+        pose_g_msg.theta = self.theta_g
 
         self.nav_goal_publisher.publish(pose_g_msg)
         
@@ -218,6 +223,18 @@ class Supervisor:
     def state_waiting(self):
         """ sends zero velocity to stay put """
 
+        # # Get the current pose
+        # currentPose = [None, None, None]
+
+        # #go to current pose
+        # self.go_to(currentPose)
+
+        # Reset goal to none
+        self.x_g = None
+        self.y_g = None
+        self.theta_g = None
+
+        # Skip controller and publish zero velocity
         vel_g_msg = Twist()
         self.cmd_vel_publisher.publish(vel_g_msg)
 
@@ -302,10 +319,12 @@ class Supervisor:
                 self.items_gathered = self.items_gathered + 1
                 
                 # move robot towards delivery location
-                self.go_to(self.delivery_location)
+                self.go_to(self.delivery_location)self.go_to(self.delivery_location)
                 self.mode = Mode.DELIVERING
             else: 
                 rospy.loginfo("Not close enough in gathering state")
+                self.go_to([self.x_g, self.y_g, self.theta_g])
+
 
         elif self.mode == Mode.DELIVERING:
             rospy.loginfo("Commanded pose in delivering")
@@ -316,10 +335,13 @@ class Supervisor:
                 # if there are still items remaining to deliver
                 if self.items_gathered < self.total_items:
                     # go get the next item
-                    self.go_to(self.found_objects[self.shopping_list][self.items_gathered])
+                    self.go_to(self.found_objects[self.shopping_list[self.items_gathered]])
                     self.mode = Mode.GATHERING
                 else:
                     self.mode = Mode.WAITING
+                    self.items_gathered = 0
+            else:
+            	self.go_to(self.delivery_location)
         ######
         # elif self.mode == Mode.RETRIEVING:
             # if self.items_gathered < self.total_items:

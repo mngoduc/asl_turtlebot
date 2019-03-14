@@ -19,10 +19,10 @@ K3 = 2.0 #0.8
 TIMEOUT = np.inf
 
 # maximum velocity
-V_MAX = 0.2
+V_MAX = 0.1
 
 # maximim angular velocity
-W_MAX = 1
+W_MAX = 0.2
 
 # if sim is True/using gazebo, therefore want to subscribe to /gazebo/model_states\
 # otherwise, they will use a TF lookup (hw2+)
@@ -143,8 +143,10 @@ class PoseController:
                 om = K2*alpha + K1*np.sinc(2*alpha/np.pi)*(alpha+K3*delta)
 
                 # Apply saturation limits
+                rospy.loginfo()
                 cmd_x_dot = np.sign(V)*min(V_MAX, np.abs(V))
                 cmd_theta_dot = np.sign(om)*min(W_MAX, np.abs(om))
+                rospy.loginfo(cmd_theta_dot)
 
 
             ######### END OF YOUR CODE ##########

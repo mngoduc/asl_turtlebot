@@ -26,13 +26,13 @@ START_POS_THRESH = .2
 # thereshold in theta to start moving forward when path following
 THETA_START_THRESH = 0.09
 # P gain on orientation before start
-THETA_START_P = 1
+THETA_START_P = 1.0
 
 # maximum velocity
-V_MAX = .2
+V_MAX = .1
 
 # maximim angular velocity
-W_MAX = .4
+W_MAX = .3
 
 # desired crusing velocity
 V_DES = 0.12
@@ -232,8 +232,11 @@ class Navigator:
                 theta_err = theta_init-self.theta
                 if abs(theta_err)>THETA_START_THRESH:
                     cmd_msg = Twist()
-                    cmd_msg.linear.x = 0
-                    cmd_msg.angular.z = THETA_START_P * theta_err
+                    Vcmd = 0
+                    Wcmd = THETA_START_P * theta_err
+                    Wcmd = np.sign(Wcmd) * min(np.abs(Wcmd),W_MAX)
+                    cmd_msg.linear.x = Vcmd
+                    cmd_msg.angular.z = Wcmd
                     self.nav_vel_pub.publish(cmd_msg)
                     return
 
@@ -302,8 +305,8 @@ class Navigator:
         self.V_prev_t = rospy.get_rostime()
 
         cmd_msg = Twist()
-        cmd_msg.linear.x = cmd_x_dot
-        cmd_msg.angular.z = cmd_theta_dot
+        cmd_msg.linear.x = np.sign(cmd_x_dot) * min(np.abs(cmd_x_dot), V_MAX)
+        cmd_msg.angular.z = np.sign(cmd_theta_dot) * min(np.abs(cmd_theta_dot), W_MAX)
         self.nav_vel_pub.publish(cmd_msg)
 
 

@@ -260,15 +260,15 @@ class AStar(object):
         if x==self.x_init or x==self.x_goal:
             return True
         for dim in range(len(x)):
-            rospy.loginfo("x[dim]")
-            rospy.loginfo(x[dim])
+            #rospy.loginfo("x[dim]")
+            #rospy.loginfo(x[dim])
             if x[dim] < self.statespace_lo[dim]:
-                rospy.loginfo("too small xdim")
+                #rospy.loginfo("too small xdim")
                 return False
             if x[dim] >= self.statespace_hi[dim]:
                 return False
         if not self.occupancy.is_free(x):
-            rospy.loginfo("too many obstacles")
+            #rospy.loginfo("too many obstacles")
             return False
         return True
 
@@ -317,8 +317,8 @@ class AStar(object):
             if self.is_free(all_neighbors[i]):
                 free_neighbors.append(all_neighbors[i])
 
-        rospy.loginfo("Number of free neighbors")
-        rospy.loginfo(len(free_neighbors))
+        #rospy.loginfo("Number of free neighbors")
+        #rospy.loginfo(len(free_neighbors))
         return free_neighbors
 
 
