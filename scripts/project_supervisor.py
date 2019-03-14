@@ -7,11 +7,12 @@ import numpy as np
 from gazebo_msgs.msg import ModelStates
 from std_msgs.msg import Float32MultiArray, String
 from geometry_msgs.msg import Twist, PoseArray, Pose2D, PoseStamped
-from asl_turtlebot.msg import DetectedObject, DetectedObjectList
+from asl_turtlebot.msg import DetectedObject, DetectedObjectList#, Sound
 import tf
 import math
 from enum import Enum
 from visualization_msgs.msg import Marker, MarkerArray
+from subprocess import call
 
 
 # if using gmapping, you will have a map frame. otherwise it will be odom frame
@@ -58,15 +59,15 @@ class Supervisor:
         self.x = 0
         self.y = 0
         self.theta = 0
-        
+
         # change these to adjust delivery destination
         self.delivery_location = [0, 0, 0]
-        
+
         self.total_items = 0
         self.items_gathered = 0
         self.items_found = 0
         self.shopping_list = []
-        
+
         # start off in WAITING
         self.mode = Mode.WAITING
         self.last_mode_printed = None
@@ -92,7 +93,7 @@ class Supervisor:
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)
         # subscriber for image detection
         rospy.Subscriber('/detector/objects', DetectedObjectList, self.detector_callback)
-        # subscriber for shopping list 
+        # subscriber for shopping list
         rospy.Subscriber('/delivery_request', String, self.delivery_callback)
 
     def rviz_goal_callback(self, msg):
@@ -115,7 +116,7 @@ class Supervisor:
                 self.theta_g = euler[2]
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 pass
-            
+
         # if rviz goal published, change to EXPLORING state
         self.mode = Mode.EXPLORING
 
@@ -160,7 +161,7 @@ class Supervisor:
                 if self.found_objects["bottle"] == [0, 0, 0]:
                     obj = msg.ob_msgs[msg.objects.index("bottle")]
                     dist = obj.distance
-                    if dist < 0.55: 
+                    if dist < 0.55:
                         self.found_objects["bottle"] = [self.x, self.y, self.theta]
                         self.add_marker("bottle")
                         rospy.loginfo("ROBOTS DRUNK")
@@ -170,10 +171,10 @@ class Supervisor:
             rospy.loginfo(self.found_objects)
             #rospy.loginfo(msg.objects)
             #rospy.loginfo(msg.ob_msgs[0].distance)
-        
+
     #delivery callback
     def delivery_callback(self, msg):
-    
+
         # only respond if we have finished exploring
         if self.mode == Mode.WAITING or self.mode == Mode.EXPLORING:
             rospy.loginfo("message")
@@ -190,11 +191,11 @@ class Supervisor:
 
             #rospy.loginfo("item_location")
             #rospy.loginfo(item_location)
-            
+
             # move robot towards first item
             self.go_to(item_location)
-            self.mode = Mode.GATHERING  
-    
+            self.mode = Mode.GATHERING
+
     #######################################################
     # is this the correct code to move a robot to a dest?
     ######################################################
@@ -212,8 +213,8 @@ class Supervisor:
         pose_g_msg.theta = self.theta_g
 
         self.nav_goal_publisher.publish(pose_g_msg)
-        
-        
+
+
 
     def state_exploring(self):
         """ sends the current desired pose to the pose controller """
@@ -268,6 +269,7 @@ class Supervisor:
 
         self.marker_array.markers.append(marker)
         self.marker_publisher.publish(self.marker_array)
+        call(["rostopic", "pub", "-1", "/sound", "turtlebot3_msgs/Sound", '{value: 1}'])
         return marker
 
     def close_to(self,x,y,theta):
@@ -279,9 +281,17 @@ class Supervisor:
     def close_to_cart(self,x,y):
         """ checks if the robot is at a pose within some threshold """
 
-        return abs(x-self.x)<POS_EPS and abs(y-self.y)<POS_EPS 
+        return abs(x-self.x)<POS_EPS and abs(y-self.y)<POS_EPS
 
-    
+    '''
+    def start_beeping(sound_num):
+        """ start beeping to indicate retrieval"""
+        sound = Sound()
+        sound.value = sound_num
+        self.beep.publish(sound)
+
+        return sound
+    '''
     def loop(self):
         """ the main loop of the robot. At each iteration, depending on its
         mode (i.e. the finite state machine's state), if takes appropriate
@@ -315,7 +325,7 @@ class Supervisor:
                 self.mode = Mode.WAITING
             else:
                 self.state_exploring()
-        
+
         # automatically kicked into NAV if goal pose received
         # elif self.mode == Mode.NAV:
         #     if self.close_to(self.x_g,self.y_g,self.theta_g):
@@ -328,16 +338,17 @@ class Supervisor:
             if self.close_to_cart(self.x_g,self.y_g):
 
             	rospy.loginfo("ITEM GATHERED!!!!!!!!")
-
+                #self.start_beeping(1)
+                call(["rostopic", "pub", "-1", "/sound", "turtlebot3_msgs/Sound", '{value: 0}'])
             	# send zero controls
             	self.state_waiting()
 
                 self.items_gathered = self.items_gathered + 1
-                
+
                 # move robot towards delivery location
                 self.go_to(self.delivery_location)
                 self.mode = Mode.DELIVERING
-            else: 
+            else:
                 rospy.loginfo("Not close enough in gathering state")
                 self.go_to([self.x_g, self.y_g, self.theta_g])
 
@@ -350,7 +361,7 @@ class Supervisor:
             	# Beep to indicate successful delivery
             	#self.beep.publish(3)
             	rospy.loginfo("ITEM DELIVERED!!!!!!!!!")
-
+                call(["rostopic", "pub", "-1", "/sound", "turtlebot3_msgs/Sound", '{value: 2}'])
             	# send zero controls
             	self.state_waiting()
 
@@ -376,7 +387,7 @@ class Supervisor:
                 # self.mode = Mode.GATHERING
 
         ######
-                    
+
 
         else:
             raise Exception('This mode is not supported: %s'
