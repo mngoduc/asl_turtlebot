@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+
+import os
 import rospy
 import numpy as np
 from gazebo_msgs.msg import ModelStates
@@ -10,6 +12,7 @@ import tf
 import math
 from enum import Enum
 from visualization_msgs.msg import Marker, MarkerArray
+
 
 # if using gmapping, you will have a map frame. otherwise it will be odom frame
 mapping = rospy.get_param("map")
@@ -79,6 +82,8 @@ class Supervisor:
         # marker array
         self.marker_array = MarkerArray()
 
+        #self.beep = rospy.Publisher('/sound', Sound, queue_size=3)
+
         # subscribers
 
         # high-level navigation pose
@@ -132,6 +137,7 @@ class Supervisor:
                     self.found_objects["banana"] = [self.x, self.y, self.theta]
                     dist = obj.distance
                     rospy.loginfo("FOUND BANANANANANANA")
+                    #os.system("rostopic pub -1 /sound turtlebot3_msgs/Sound '{value:3}'")
                     self.add_marker("banana")
                     #rospy.loginfo(obj.distance)
             if "broccoli" in objects_str:
@@ -182,8 +188,8 @@ class Supervisor:
             item_location = self.found_objects[self.shopping_list[0]]
             rospy.loginfo(item_location)
 
-            rospy.loginfo("item_location")
-            rospy.loginfo(item_location)
+            #rospy.loginfo("item_location")
+            #rospy.loginfo(item_location)
             
             # move robot towards first item
             self.go_to(item_location)
@@ -197,8 +203,8 @@ class Supervisor:
         self.y_g = msg[1]
         self.theta_g = msg[2]
 
-        rospy.loginfo("X goal")
-        rospy.loginfo(self.x_g)
+        #rospy.loginfo("X goal")
+        #rospy.loginfo(self.x_g)
 
         pose_g_msg = Pose2D()
         pose_g_msg.x = self.x_g
@@ -240,6 +246,8 @@ class Supervisor:
         self.cmd_vel_publisher.publish(vel_g_msg)
 
     def add_marker(self, object_type):
+    	# Indicate that we are adding a marker with a fucking beep
+    	#self.beep.publish(1)
         marker = Marker()
         marker.header.frame_id = "/map"
         marker.type = marker.SPHERE
@@ -267,6 +275,11 @@ class Supervisor:
 
         return (abs(x-self.x)<POS_EPS and abs(y-self.y)<POS_EPS \
             and abs(theta-self.theta)<THETA_EPS)
+
+    def close_to_cart(self,x,y):
+        """ checks if the robot is at a pose within some threshold """
+
+        return abs(x-self.x)<POS_EPS and abs(y-self.y)<POS_EPS 
 
     
     def loop(self):
@@ -312,7 +325,9 @@ class Supervisor:
             rospy.loginfo("Commanded pose in gathering")
             rospy.loginfo([self.x_g, self.y_g, self.theta_g])
             # if robot has reached item
-            if self.close_to(self.x_g,self.y_g,self.theta_g):
+            if self.close_to_cart(self.x_g,self.y_g):
+
+            	rospy.loginfo("ITEM GATHERED!!!!!!!!")
 
             	# send zero controls
             	self.state_waiting()
@@ -330,7 +345,11 @@ class Supervisor:
         elif self.mode == Mode.DELIVERING:
             rospy.loginfo("Commanded pose in delivering")
             rospy.loginfo([self.x_g, self.y_g, self.theta_g])
-            if self.close_to(self.x_g,self.y_g,self.theta_g):
+            if self.close_to_cart(self.x_g,self.y_g):
+
+            	# Beep to indicate successful delivery
+            	#self.beep.publish(3)
+            	rospy.loginfo("ITEM DELIVERED!!!!!!!!!")
 
             	# send zero controls
             	self.state_waiting()
@@ -341,9 +360,11 @@ class Supervisor:
                 if self.items_gathered < self.total_items:
                     # go get the next item
                     self.go_to(self.found_objects[self.shopping_list[self.items_gathered]])
+                    rospy.loginfo("GETTING NEXT ITEM!!!!!!!!")
                     self.mode = Mode.GATHERING
                 else:
                     self.mode = Mode.WAITING
+                    rospy.loginfo("ALL ITEMS DELIVERED!!!!!! IDLING.....")
                     self.items_gathered = 0
             else:
             	self.go_to(self.delivery_location)

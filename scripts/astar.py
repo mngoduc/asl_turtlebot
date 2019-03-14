@@ -317,8 +317,8 @@ class AStar(object):
             if self.is_free(all_neighbors[i]):
                 free_neighbors.append(all_neighbors[i])
 
-        #rospy.loginfo("Number of free neighbors")
-        #rospy.loginfo(len(free_neighbors))
+        rospy.loginfo("Number of free neighbors")
+        rospy.loginfo(len(free_neighbors))
         return free_neighbors
 
 
@@ -367,17 +367,33 @@ class AStar(object):
     # INPUT: None
     # OUTPUT: Boolean, True if a solution from x_init to x_goal was found
     def solve(self):
+
+        rospy.loginfo('trying to solve')
+        # Count while loop iterations
+        iters = 0
+        maxIters = 1000
+        #while (len(self.open_set)>0 and iters < maxIters):
         while len(self.open_set)>0:
+
+            iters = iters + 1
+            rospy.loginfo(iters)
+
+            # rospy.loginfo('this is the closed set')
+            # rospy.loginfo(self.closed_set)
 
             # find state in OPEN set with lowest f_score
             x_current = self.find_best_f_score()
-            rospy.loginfo("here are the current and goal states")
-            rospy.loginfo(x_current)
-            rospy.loginfo(self.x_goal)
+            # rospy.loginfo("here are the current and goal states")
+            # rospy.loginfo(x_current)
+            # rospy.loginfo(self.x_goal)
             # if x_current = x_goal, exit
+            #goalTol = 1.0
+            #goalError = np.linalg.norm(np.array(x_current) - np.array(self.x_goal))
             if x_current == self.x_goal:
+            #if abs(goalError) < goalTol:
                 # update path
                 self.path = self.reconstruct_path() 
+                rospy.loginfo('found soluatin')
                 return True
 
             # remove x_current from the OPEN set and add to CLOSED set
@@ -393,23 +409,29 @@ class AStar(object):
                 # if neighbor is in CLOSED set, skip to the next neighbor
                 x_neigh = free_neighbors[i]
                 if x_neigh in self.closed_set:
+                    # rospy.loginfo('x neighbor is in closeed set')
+                    # rospy.loginfo(x_neigh)
                     continue
 
                 # calculate tentative g_score
                 tentative_g_score = self.g_score[x_current] + self.distance(x_current, x_neigh)
 
                 # if neighbor is not in OPEN set, add it to OPEN set
-                if not x_neigh in self.open_set:
+                if not (x_neigh in self.open_set):
+                    #rospy.loginfo(x_neigh)
                     self.open_set.append(x_neigh)
                 # if tentative g_score exceeds neighbor's g_score, skip to next neighbor
                 elif tentative_g_score > self.g_score[x_neigh]:
+                    #rospy.loginfo('g score error?')
                     continue
 
                 # if pass all the if constructs, update dicts
                 self.came_from[x_neigh] = x_current
                 self.g_score[x_neigh] = tentative_g_score
-                self.f_score[x_neigh] = tentative_g_score + self.distance(self.x_init,self.x_goal)
-
+                self.f_score[x_neigh] = tentative_g_score + self.distance(x_neigh,self.x_goal)
+        rospy.loginfo('failed to find soln: here are the lengths of the open set and closed set')
+        rospy.loginfo(len(self.open_set))
+        rospy.loginfo(len(self.closed_set))
         return False
 
 # A 2D state space grid with a set of rectangular obstacles. The grid is fully deterministic
@@ -423,7 +445,7 @@ class DetOccupancyGrid2D(object):
         for obs in self.obstacles:
             inside = True
             for dim in range(len(x)):
-                if x[dim] < obs[0][dim] or x[dim] > obs[1][dim]:
+                if x[dim] < obs[0][dim] +1 or x[dim] > obs[1][dim] -1:
                     inside = False
                     break
             if inside:

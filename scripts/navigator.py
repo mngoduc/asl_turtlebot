@@ -75,7 +75,8 @@ class Navigator:
         self.occupancy_updated = False
 
         # plan parameters
-        self.plan_resolution =  0.05
+        #self.plan_resolution =  0.05
+        self.plan_resolution = 0.05
         self.plan_horizon = 15
 
         # variables for the controller
@@ -167,6 +168,9 @@ class Navigator:
 
         # if there is no plan, we are far from the start of the plan,
         # or the occupancy grid has been updated, update the current plan
+        # rospy.loginfo(len(self.current_plan))
+        # rospy.loginfo(self.close_to_start_location())
+        # rospy.loginfo(self.occupancy_updated)
         if len(self.current_plan)==0 or not(self.close_to_start_location()) or self.occupancy_updated:
 
             # use A* to compute new plan
@@ -222,32 +226,60 @@ class Navigator:
                 else:
                     rospy.logwarn("Navigator: Path too short, not updating")
             else:
-                rospy.logwarn("Navigator: Could not find path")
                 self.current_plan = []
+                rospy.logwarn("Navigator: Could not find path")
+                # theta_init = np.arctan2(self.current_plan[1][1]-self.current_plan[0][1],self.current_plan[1][0]-self.current_plan[0][0])
+                # theta_err = theta_init-self.theta
+                # theta_err = (theta_err + np.pi) % (2 * np.pi) - np.pi
+                if True:
+                    rospy.loginfo('Nav: im turning in place')
+                    cmd_msg = Twist()
+                    cmd_x_dot = V_MAX / 10.0
+                    #cmd_theta_dot = THETA_START_P * theta_err
+                    cmd_theta_dot = W_MAX / 2.0
+                    cmd_theta_dot = np.sign(cmd_theta_dot) * min(np.abs(cmd_theta_dot), W_MAX)
+                    cmd_msg.linear.x = cmd_x_dot
+                    cmd_msg.angular.z = cmd_theta_dot
+                    # Vcmd = 0
+                    # Wcmd = THETA_START_P * theta_err
+                    # Wcmd = np.sign(Wcmd) * min(np.abs(Wcmd),W_MAX)
+                    # cmd_msg.linear.x = Vcmd
+                    # cmd_msg.angular.z = Wcmd
+                    self.nav_vel_pub.publish(cmd_msg)
+                    return
+                
 
         # if we have a path, execute it (we need at least 3 points for this controller)
         if len(self.current_plan) > 3:
 
             # if currently not moving, first line up with the plan
-            if self.V_prev == 0:
+            #if self.V_prev == 0:
+            if True:
                 theta_init = np.arctan2(self.current_plan[1][1]-self.current_plan[0][1],self.current_plan[1][0]-self.current_plan[0][0])
                 theta_err = theta_init-self.theta
+                theta_err = (theta_err + np.pi) % (2 * np.pi) - np.pi
                 if abs(theta_err)>THETA_START_THRESH:
+                    rospy.loginfo('Nav: im turning in place')
                     cmd_msg = Twist()
-                    Vcmd = 0
-                    Wcmd = THETA_START_P * theta_err
-                    Wcmd = np.sign(Wcmd) * min(np.abs(Wcmd),W_MAX)
-                    cmd_msg.linear.x = Vcmd
-                    cmd_msg.angular.z = Wcmd
+                    cmd_x_dot = 0
+                    cmd_theta_dot = THETA_START_P * theta_err
+                    cmd_theta_dot = np.sign(cmd_theta_dot) * min(np.abs(cmd_theta_dot), W_MAX)
+                    cmd_msg.linear.x = cmd_x_dot
+                    cmd_msg.angular.z = cmd_theta_dot
+                    # Vcmd = 0
+                    # Wcmd = THETA_START_P * theta_err
+                    # Wcmd = np.sign(Wcmd) * min(np.abs(Wcmd),W_MAX)
+                    # cmd_msg.linear.x = Vcmd
+                    # cmd_msg.angular.z = Wcmd
                     self.nav_vel_pub.publish(cmd_msg)
                     return
-            cmd_x_dot = 0
-            cmd_theta_dot = 0
-            cmd_msg = Twist()
-            cmd_msg.linear.x = cmd_x_dot
-            cmd_msg.angular.z = cmd_theta_dot
-            self.nav_vel_pub.publish(cmd_msg)
-            return
+            # cmd_x_dot = 0
+            # cmd_theta_dot = 0
+            # cmd_msg = Twist()
+            # cmd_msg.linear.x = cmd_x_dot
+            # cmd_msg.angular.z = cmd_theta_dot
+            # self.nav_vel_pub.publish(cmd_msg)
+            # return
             # compute the "current" time along the path execution
             t = (rospy.get_rostime()-self.current_plan_start_time).to_sec()
             t = max(0.0, t)

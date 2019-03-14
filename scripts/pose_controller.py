@@ -12,7 +12,7 @@ from utils import wrapToPi
 # control gains
 K1 = 0.4 #0.4
 K2 = 0.8 #0.8
-K3 = 2.0 #0.8
+K3 = 4.0 #0.8
 
 # tells the robot to stay still
 # if it doesn't get messages within that time period
@@ -28,6 +28,10 @@ W_MAX = 0.15
 RHO_MIN = 0.2
 
 TH_ROT_MIN = 0.5
+
+TH_ERROR_SPIN = 0.0
+
+THETA_START_P = 1.0
 
 # if sim is True/using gazebo, therefore want to subscribe to /gazebo/model_states\
 # otherwise, they will use a TF lookup (hw2+)
@@ -161,6 +165,15 @@ class PoseController:
             rospy.loginfo("Pose controller TIMEOUT: commanding zero controls")
             cmd_x_dot = 0
             cmd_theta_dot = 0
+
+
+        # Check if we should spin in place
+        th_rot = (th_rot + np.pi) % (2 * np.pi) - np.pi
+        if abs(th_rot) > TH_ERROR_SPIN:
+            rospy.loginfo('PC: im turning in place')
+            cmd_x_dot = 0
+            cmd_theta_dot = THETA_START_P * th_rot
+            cmd_theta_dot = np.sign(cmd_theta_dot) * min(np.abs(cmd_theta_dot), W_MAX)
 
         cmd = Twist()
         cmd.linear.x = cmd_x_dot
